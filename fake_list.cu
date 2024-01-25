@@ -4,7 +4,8 @@
 #include <math.h>
 #include "timer.hpp"
 
-
+const int num_blocks = 256;
+const int num_threads_per_block = 256;
 
 //
 // Data container for simulation input
@@ -31,11 +32,11 @@ typedef struct
 //
 void init_input(SimInput_t *input)
 {
-    // input->population_sie = 8916845;  // Austria's population in 2020 according to Statistik Austria
-    input->population_size = 20;  // Austria's population in 2020 according to Statistik Austria
+    // input->population_size = 8916845;  // Austria's population in 2020 according to Statistik Austria
+    input->population_size = 20000;  // Austria's population in 2020 according to Statistik Austria
 
     input->pushback_threshold   = 20000;   // as soon as we have 20k fake news believers, the general public starts to push back
-    input->starting_fakenews    = 10;
+    input->starting_fakenews    = 100;
     input->recovery_rate        = 0.01;
 
     input->contacts_per_day = (int*)malloc(sizeof(int) * 365);
@@ -94,10 +95,40 @@ void deinit_output(SimOutput_t *output)
 
 
 // Init Data with initzial fake news believer
-__global__ void Init_Data(int population_size, int starting_fakenews, double *fakenews_belief_strength){
+__global__ void cuda_init_Data(int population_size, int starting_fakenews, double *fakenews_belief_strength){
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i <  population_size; i += blockDim.x*gridDim.x) {
         fakenews_belief_strength[i] = (i < starting_fakenews) ? 1 : 0;
     }
+}
+
+//Compute the number of believers and write into corresoponding array
+__global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int population_size, int *overall_believers){
+    __shared__ int shared_believers[num_blocks];
+
+    int believers{0};
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < population_size; i += blockDim.x * gridDim.x){
+        if (cuda_fakenews_believe_strength[i] > 0.5)
+            ++believers;
+    }
+    shared_believers[threadIdx.x] = believers;
+    for (int k = blockDim.x/2; k > 0; k/= 2) {
+        __syncthreads();
+        if(threadIdx.x < k) {
+            shared_believers[threadIdx.x] += shared_believers[threadIdx.x + k];
+        }
+    }
+    if(0 == threadIdx.x) overall_believers[blockIdx.x] = shared_believers[0];
+
+    //unfortunately nop atomic add availavble -> do final summation on cpu
+    // if (threadIdx.x == 0) atomicAdd(overall_believers, shared_believers[0]);
+}
+
+int count_believers(int* believers_per_block, int size) {
+    int tmp_sum{0};
+    for (int i = 0; i < size; ++i) {
+        tmp_sum += believers_per_block[i];
+    }
+    return tmp_sum;
 }
 
 
@@ -119,12 +150,26 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
     int *cuda_fakenews_believers_per_day;
     cudaMalloc(&cuda_fakenews_believers_per_day, sizeof(int)*365);
 
+    int *cuda_fakenews_believers_per_block;
+    cudaMalloc(&cuda_fakenews_believers_per_block, sizeof(int) * num_blocks);
+
     //Init fakenews believers
-    Init_Data<<<256, 256 >>>(input->population_size, input->starting_fakenews, cuda_fakenews_believe_strength);
+    cuda_init_Data<<<num_blocks, num_threads_per_block >>>(input->population_size, input->starting_fakenews, cuda_fakenews_believe_strength);
+
+
     double *strength_CPU = new double[input->population_size];
-    cudaMemcpy(strength_CPU, cuda_fakenews_believe_strength, sizeof(double)*input->population_size, cudaMemcpyDeviceToHost);
-    for(int i = 0; i < input->population_size; ++i)
-        printf("%f\n", strength_CPU[i]);
+    // cudaMemcpy(strength_CPU, cuda_fakenews_believe_strength, sizeof(double)*input->population_size, cudaMemcpyDeviceToHost);
+    // for(int i = 0; i < input->population_size; ++i)
+    //     printf("%f\n", strength_CPU[i]);
+
+    int believers_today{0};
+    int *fakenews_believers_per_block = new int[num_blocks];
+    cuda_count_believers<<<num_blocks, num_threads_per_block>>>(cuda_fakenews_believe_strength, input->population_size, cuda_fakenews_believers_per_block);
+    cudaMemcpy(fakenews_believers_per_block, cuda_fakenews_believers_per_block, sizeof(int)*num_blocks, cudaMemcpyDeviceToHost);
+    believers_today = count_believers(fakenews_believers_per_block, num_blocks);
+    printf("Believers today: %i\n", believers_today);
+
+
 
 
     delete[] strength_CPU;
