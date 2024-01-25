@@ -102,7 +102,8 @@ __global__ void cuda_init_Data(int population_size, int starting_fakenews, doubl
 }
 
 //Compute the number of believers and write into corresoponding array
-__global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int population_size, int *overall_believers){
+__global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int population_size, int *overall_believers, int *cuda_believers_per_thread){
+    int tid_global = blockIdx.x * blockDim.x + threadIdx.x;
     __shared__ int shared_believers[num_blocks];
 
     int believers{0};
@@ -110,6 +111,7 @@ __global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int
         if (cuda_fakenews_believe_strength[i] > 0.5)
             ++believers;
     }
+    cuda_believers_per_thread[tid_global] = believers;
     shared_believers[threadIdx.x] = believers;
     for (int k = blockDim.x/2; k > 0; k/= 2) {
         __syncthreads();
@@ -117,11 +119,33 @@ __global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int
             shared_believers[threadIdx.x] += shared_believers[threadIdx.x + k];
         }
     }
+    //workaround due to no atomic add
     if(0 == threadIdx.x) overall_believers[blockIdx.x] = shared_believers[0];
 
-    //unfortunately nop atomic add availavble -> do final summation on cpu
+    //unfortunately nop atomic add availavble (threw compilation error) -> do final summation on cpu
+    //could achive maybe better performance with atomic add because then the complete days loop
+    //could be done in one kernel communicating the array with believers on each day at the end not each day separatly
+
     // if (threadIdx.x == 0) atomicAdd(overall_believers, shared_believers[0]);
 }
+
+__global__ void cuda_pass_on_fakenews(int population_size, double *cuda_rand_values_threads, double *cuda_fakenews_believe_strength, double recovery_rate_today, double transmission_probability_today, double contacts_today, int max_rand_val_per_thread) {
+    int tid_global = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int dude = blockIdx.x * blockDim.x + threadIdx.x; dude < population_size; dude += blockDim.x * gridDim.x){
+        cuda_fakenews_believe_strength[dude] -= recovery_rate_today;
+        if (cuda_fakenews_believe_strength[dude] > 0.5) {
+            for (int contact = 0; contact < contacts_today; ++ contact) {
+                double r = cuda_rand_values_threads[tid_global*max_rand_val_per_thread];
+                if (r < transmission_probability_today) {
+                    r = cuda_rand_values_threads[tid_global*max_rand_val_per_thread+1];
+                    int other_person = r*population_size;
+                    cuda_fakenews_believe_strength[other_person] = 1;
+                }
+            }
+        }
+    }
+}
+
 
 int count_believers(int* believers_per_block, int size) {
     int tmp_sum{0};
@@ -131,8 +155,31 @@ int count_believers(int* believers_per_block, int size) {
     return tmp_sum;
 }
 
+void generate_random_seq(double *array, int size) {
+    for (int i = 0; i < size; ++i) {
+        array[i] = ((double)rand()) / (double)RAND_MAX;
+    }
+}
+
 
 void run_simulation(const SimInput_t *input, SimOutput_t *output) {
+    //get max number of contacts a day to compute array for step 4
+    
+    double max_contacts_per_day{0};
+    for(int i = 0; i < 365; ++i){
+        double curr_contacts = input->contacts_per_day[i];
+        if (curr_contacts > max_contacts_per_day)
+            max_contacts_per_day = curr_contacts;
+    }
+    printf("max_contacts: %f\n", max_contacts_per_day);
+    int max_rand_val_per_thread = (input->population_size + num_blocks * num_threads_per_block -1)/(num_blocks * num_threads_per_block) * 2 * max_contacts_per_day;
+    printf("rand vals per block : %i\n", max_rand_val_per_thread);
+
+    //Allocate MEmory on the CPU
+    int *fakenews_believers_per_day = new int[356];
+    int *believers_per_thread = new int[num_blocks*num_threads_per_block];
+    double *tmp_rand_num_array = new double[max_rand_val_per_thread];
+
 
     //Alloc Memory on the GPU
     double *cuda_fakenews_believe_strength;
@@ -153,36 +200,93 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
     int *cuda_fakenews_believers_per_block;
     cudaMalloc(&cuda_fakenews_believers_per_block, sizeof(int) * num_blocks);
 
+    int *cuda_believers_per_thread; //needed foir the list of rand numbers
+    cudaMalloc(&cuda_believers_per_thread, sizeof(int)*num_blocks*num_threads_per_block);
+
+    double *cuda_rand_values_threads;
+    cudaMalloc(&cuda_rand_values_threads, sizeof(double) * num_blocks*num_threads_per_block*max_rand_val_per_thread);
+
     //Init fakenews believers
     cuda_init_Data<<<num_blocks, num_threads_per_block >>>(input->population_size, input->starting_fakenews, cuda_fakenews_believe_strength);
 
 
-    double *strength_CPU = new double[input->population_size];
+    double *strength_CPU = new double[input->population_size]; // debugging
     // cudaMemcpy(strength_CPU, cuda_fakenews_believe_strength, sizeof(double)*input->population_size, cudaMemcpyDeviceToHost);
     // for(int i = 0; i < input->population_size; ++i)
     //     printf("%f\n", strength_CPU[i]);
 
-    int believers_today{0};
-    int *fakenews_believers_per_block = new int[num_blocks];
-    cuda_count_believers<<<num_blocks, num_threads_per_block>>>(cuda_fakenews_believe_strength, input->population_size, cuda_fakenews_believers_per_block);
-    cudaMemcpy(fakenews_believers_per_block, cuda_fakenews_believers_per_block, sizeof(int)*num_blocks, cudaMemcpyDeviceToHost);
-    believers_today = count_believers(fakenews_believers_per_block, num_blocks);
-    printf("Believers today: %i\n", believers_today);
+
+    int num_believers_max{0};
+    for (int day = 0; day < 1; ++day) {
+        
+        // STEP 1: determin number of believers of the day
+        int believers_today{0};
+        int *fakenews_believers_per_block = new int[num_blocks]; // used for reduction on cpu
+
+        cuda_count_believers<<<num_blocks, num_threads_per_block>>>(cuda_fakenews_believe_strength, input->population_size, cuda_fakenews_believers_per_block, cuda_believers_per_thread);
+        cudaMemcpy(fakenews_believers_per_block, cuda_fakenews_believers_per_block, sizeof(int)*num_blocks, cudaMemcpyDeviceToHost);
+        believers_today = count_believers(fakenews_believers_per_block, num_blocks);
+        fakenews_believers_per_day[day] = believers_today;
+        // printf("Believers today: %i\n", believers_today);
+
+        // Step 2:
+        printf("STep2\n");
+        int is_pushback{0};
+        if (believers_today > num_believers_max) {num_believers_max = believers_today;}
+        if (num_believers_max > input->pushback_threshold) {is_pushback = 1;}
 
 
+        // some diagnostic output
+        char pushback[] = " [PUSHBACK]";
+        char normal[] = "";
+        printf("Day %d%s: %d active fake news believers\n", day, is_pushback ? pushback : normal, believers_today);
+
+        if (believers_today == 0) {
+          printf("Fake news pandemic ended on Day %d\n", day);
+          break;
+        }
+
+        // STEP 3: determin todays transmission/recovery probabilities
+        printf("step3\n");
+        double contacts_today = input->contacts_per_day[day];
+        double transmission_probability_today = input->transmission_probability[day];
+        double recovery_rate_today = input->recovery_rate;
+
+        if (is_pushback) {
+            transmission_probability_today /= 5.;
+            recovery_rate_today *= 5.;
+        }
+
+        //STEP 4: Pass On Fake NEws within thhe population
+        //needs to be allocated in the loop because the contacts per day could change each day
+        printf("STep4\n");
+        for (int i = 0; i < num_blocks * num_threads_per_block; ++i) {
+            generate_random_seq(tmp_rand_num_array, believers_per_thread[i]);
+            cudaMemcpy(&cuda_rand_values_threads[i*max_rand_val_per_thread], tmp_rand_num_array, sizeof(double)*believers_per_thread[i], cudaMemcpyHostToDevice);
+        }
+        // use cuda kernel for computation of populatioin loop
+        cuda_pass_on_fakenews<<<num_blocks, num_threads_per_block>>>(input->population_size, cuda_rand_values_threads, cuda_fakenews_believe_strength, recovery_rate_today, transmission_probability_today, contacts_today, max_rand_val_per_thread);
 
 
-    delete[] strength_CPU;
+    }
+
+    delete[] strength_CPU;//debugging
+    delete[] believers_per_thread;
+    delete[] tmp_rand_num_array;
     cudaFree(cuda_contacts_per_day);
+    cudaFree(cuda_rand_values_threads);
     cudaFree(cuda_fakenews_believe_strength);
     cudaFree(cuda_fakenews_believers_per_day);
     cudaFree(cuda_recovery_rate);
     cudaFree(cuda_transmission_probability);
+    cudaFree(cuda_fakenews_believers_per_block);
+    cudaFree(cuda_believers_per_thread);
 }
 
 
 
 int main(int argc, char **argv) {
+    printf("start main\n");
     SimInput_t input;
     SimOutput_t output;
     init_input(&input);
