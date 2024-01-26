@@ -123,7 +123,6 @@ __global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int
     if(0 == threadIdx.x) overall_believers[blockIdx.x] = shared_believers[0];
 
     //unfortunately no atomic add availavble (threw compilation error) -> do final summation on cpu
-
     // if (threadIdx.x == 0) atomicAdd(overall_believers, shared_believers[0]);
 }
 
