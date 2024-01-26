@@ -4,7 +4,7 @@
 #include <math.h>
 #include "timer.hpp"
 
-#define MOD 4294967296;
+#define MOD 4294967296; // 2^32
 
 const int num_blocks = 256;
 const int num_threads_per_block = 256;
@@ -46,13 +46,25 @@ __global__ void cuda_mult_LCG(double *rand_num, int size) {
 int main () {
     double *rand_num_host = new double[256*256];
     double *cuda_rand_num;
-    cudaMalloc(&cuda_rand_num, sizeof(double)*256*256)
+    cudaMalloc(&cuda_rand_num, sizeof(double)*256*256);
     
     cuda_mult_LCG<<<256, 256>>>(cuda_rand_num, 256*256);
     cudaMemcpy(rand_num_host, cuda_rand_num, sizeof(double)*256*256, cudaMemcpyDeviceToHost);
-    for (int i = 0; i < 256*256; ++i)
-        printf("%f\n", rand_num_host[i]);
+    int arr[10] = {0};
+    for (int i = 0; i < 256*256; ++i) {
+        if (rand_num_host[i] >= 0 && rand_num_host[i] < 1) {
+            int index = static_cast<int>(rand_num_host[i] * 10);
+            if (index == 10) index = 9; // Edge case for 1.0
+            arr[index]++;
+        }
+    }
 
+    for (int j = 0; j < 10; ++j) {
+        printf("Interval [%1.1f, %1.1f): %i\n", j/10.0, (j+1)/10.0, arr[j]);
+    }
+        
+    delete[] rand_num_host;
+    cudaFree(cuda_rand_num);
 
     return EXIT_SUCCESS;
 }
