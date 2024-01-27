@@ -93,6 +93,21 @@ void deinit_output(SimOutput_t *output)
     free(output->fakenews_belief_strength);
 }
 
+__device__ unsigned cuda_taus(unsigned &state) {
+    int a = 3, b = 12, c = 19;
+    unsigned d = 4294967295UL;
+    unsigned tmp = (((state << a) ^ state) >> b);
+    return state = (((state & d) << c) ^ tmp);
+}
+__device__ unsigned cuda_LCG(unsigned &state) {
+    int a = 45, b = 3;
+    return state = (a * state + b); //%4294967295UL;
+}
+
+__device__ double cuda_gen_rand_num(unsigned &z_taus, unsigned &z_LCG) {
+    double scaling = 1./UINT_MAX;
+    return scaling * (cuda_taus(z_taus) ^ cuda_LCG(z_LCG));
+}
 
 // Init Data with initzial fake news believer
 __global__ void cuda_init_Data(int population_size, int starting_fakenews, double *fakenews_belief_strength){
@@ -123,18 +138,19 @@ __global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int
     if(0 == threadIdx.x) overall_believers[blockIdx.x] = shared_believers[0];
 
     //unfortunately no atomic add availavble (threw compilation error) -> do final summation on cpu
+
     // if (threadIdx.x == 0) atomicAdd(overall_believers, shared_believers[0]);
 }
 
-__global__ void cuda_pass_on_fakenews(int population_size, double *cuda_rand_values_threads, double *cuda_fakenews_believe_strength, double recovery_rate_today, double transmission_probability_today, double contacts_today, int max_rand_val_per_thread) {
+__global__ void cuda_pass_on_fakenews(int population_size, double *cuda_fakenews_believe_strength, double recovery_rate_today, double transmission_probability_today, double contacts_today, unsigned *cuda_states_taus, unsigned *cuda_states_LCG) {
     int tid_global = blockIdx.x * blockDim.x + threadIdx.x;
     for (int dude = blockIdx.x * blockDim.x + threadIdx.x; dude < population_size; dude += blockDim.x * gridDim.x){
         cuda_fakenews_believe_strength[dude] -= recovery_rate_today;
         if (cuda_fakenews_believe_strength[dude] > 0.5) {
             for (int contact = 0; contact < contacts_today; ++ contact) {
-                double r = cuda_rand_values_threads[tid_global*max_rand_val_per_thread];
+                double r = cuda_gen_rand_num(cuda_states_taus[tid_global], cuda_states_LCG[tid_global]);
                 if (r < transmission_probability_today) {
-                    r = cuda_rand_values_threads[tid_global*max_rand_val_per_thread+contact+1];
+                    r = cuda_gen_rand_num(cuda_states_taus[tid_global], cuda_states_LCG[tid_global]);
                     int other_person = r*population_size;
                     cuda_fakenews_believe_strength[other_person] = 1;
                 }
@@ -176,6 +192,7 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
     int *fakenews_believers_per_day = new int[356];
     int *believers_per_thread = new int[num_blocks*num_threads_per_block];
     double *tmp_rand_num_array = new double[max_rand_val_per_thread*num_blocks*num_threads_per_block];
+    unsigned *state_init = new unsigned[num_blocks*num_threads_per_block];
 
 
     //Alloc Memory on the GPU
@@ -200,8 +217,22 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
     int *cuda_believers_per_thread; //needed foir the list of rand numbers
     cudaMalloc(&cuda_believers_per_thread, sizeof(int)*num_blocks*num_threads_per_block);
 
-    double *cuda_rand_values_threads;
-    cudaMalloc(&cuda_rand_values_threads, sizeof(double) * num_blocks*num_threads_per_block*max_rand_val_per_thread);
+    unsigned *cuda_states_taus, *cuda_states_LCG;
+    cudaMalloc(&cuda_states_taus, sizeof(unsigned)*num_blocks*num_threads_per_block);
+    cudaMalloc(&cuda_states_LCG, sizeof(unsigned)*num_blocks*num_threads_per_block);
+
+    //init states for rand generators;
+    for (int i = 0; i < num_blocks*num_threads_per_block; ++ i) {
+        state_init[i] = static_cast<unsigned int>(static_cast<double>(rand()) / RAND_MAX * UINT_MAX);
+    }
+
+    cudaMemcpy(cuda_states_taus, state_init, sizeof(unsigned)*num_blocks*num_threads_per_block, cudaMemcpyHostToDevice);
+
+    for (int i = 0; i < num_blocks*num_threads_per_block; ++ i) {
+        state_init[i] = static_cast<unsigned int>(static_cast<double>(rand()) / RAND_MAX * UINT_MAX);
+    }
+
+    cudaMemcpy(cuda_states_LCG, state_init, sizeof(unsigned)*num_blocks*num_threads_per_block, cudaMemcpyHostToDevice);
 
     //Init fakenews believers
     cuda_init_Data<<<num_blocks, num_threads_per_block >>>(input->population_size, input->starting_fakenews, cuda_fakenews_believe_strength);
@@ -245,18 +276,17 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
         }
 
         //STEP 4: Pass On Fake NEws within thhe population
-        generate_random_seq(tmp_rand_num_array, num_blocks*num_threads_per_block*max_rand_val_per_thread);
-        cudaMemcpy(cuda_rand_values_threads, tmp_rand_num_array, sizeof(double)*num_blocks*num_threads_per_block*max_rand_val_per_thread, cudaMemcpyHostToDevice);
+        // generate_random_seq(tmp_rand_num_array, num_blocks*num_threads_per_block*max_rand_val_per_thread);
+        // cudaMemcpy(cuda_rand_values_threads, tmp_rand_num_array, sizeof(double)*num_blocks*num_threads_per_block*max_rand_val_per_thread, cudaMemcpyHostToDevice);
 
 
         // use cuda kernel for computation of populatioin loop
-        cuda_pass_on_fakenews<<<num_blocks, num_threads_per_block>>>(input->population_size, cuda_rand_values_threads, cuda_fakenews_believe_strength, recovery_rate_today, transmission_probability_today, contacts_today, max_rand_val_per_thread);
+        cuda_pass_on_fakenews<<<num_blocks, num_threads_per_block>>>(input->population_size, cuda_fakenews_believe_strength, recovery_rate_today, transmission_probability_today, contacts_today, cuda_states_taus, cuda_states_LCG);
     }
 
     delete[] believers_per_thread;
     delete[] tmp_rand_num_array;
     cudaFree(cuda_contacts_per_day);
-    cudaFree(cuda_rand_values_threads);
     cudaFree(cuda_fakenews_believe_strength);
     cudaFree(cuda_fakenews_believers_per_day);
     cudaFree(cuda_recovery_rate);
