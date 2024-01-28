@@ -228,7 +228,7 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
         // some diagnostic output
         char pushback[] = " [PUSHBACK]";
         char normal[] = "";
-        printf("Day %d%s: %d active fake news believers\n", day, is_pushback ? pushback : normal, believers_today);
+        // printf("Day %d%s: %d active fake news believers\n", day, is_pushback ? pushback : normal, believers_today);
 
         if (believers_today == 0) {
           printf("Fake news pandemic ended on Day %d\n", day);
@@ -279,7 +279,7 @@ int main(int argc, char **argv) {
     SimInput_t input;
     SimOutput_t output;
     init_input(&input, population, contacts, pushback);
-    printf("population: %lu, contacts: %i, pusback: %i\n", input.population_size, input.contacts_per_day[3], input.pushback_threshold);
+    printf("population: %e, contacts: %i, pusback: %i\n", static_cast<double>(input.population_size), input.contacts_per_day[3], input.pushback_threshold);
     init_output(&output, input.population_size);
     Timer timer;
     srand(0); // initialize random seed for deterministic output
