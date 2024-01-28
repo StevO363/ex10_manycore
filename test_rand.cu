@@ -18,7 +18,7 @@ __device__ unsigned cuda_taus(unsigned &state) {
 }
 __device__ unsigned cuda_LCG(unsigned &state) {
     int a = 45, b = 3;
-    return state = (a * state + b); //%4294967295UL;
+    return state = (a * state + b);
 }
 
 __device__ double cuda_gen_rand_num(unsigned &z_taus, unsigned &z_LCG) {
@@ -75,7 +75,8 @@ int main () {
 
     // Print the count in each bin
     printf("CHECKING STATISICAL QUALITY\n\n");
-    printf("checking number of values in the given intervals:\n");
+    printf("Numbers generated: %lu, in the interval betweene 0 and 1\n");
+    printf("checking number of values in the given intervals:\n\n");
     for (int i = 0; i < numBins; ++i) {
 
         std::cout << "Bin " << i << " (Range " << (i * 0.1) << " to " << ((i + 1) * 0.1) << "): " << bins[i] <<  " " << std::fixed << std::setprecision(2) << bins[i]*100./arraySize << "%" << std::endl;

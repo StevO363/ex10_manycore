@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <math.h>
+#include <string>
 #include "timer.hpp"
 
 const int num_blocks = 256;
@@ -30,19 +31,19 @@ typedef struct
 //
 // Constructor for the simulation input structure
 //
-void init_input(SimInput_t *input)
+void init_input(SimInput_t *input, size_t population=8916845, int contacts=2, int pushback=20000)
 {
-    input->population_size = 8916845;  // Austria's population in 2020 according to Statistik Austria
+    input->population_size = population;  // Austria's population in 2020 according to Statistik Austria
     // input->population_size = 20000;  // Austria's population in 2020 according to Statistik Austria
 
-    input->pushback_threshold   = 20000;   // as soon as we have 20k fake news believers, the general public starts to push back
+    input->pushback_threshold   = pushback;   // as soon as we have 20k fake news believers, the general public starts to push back
     input->starting_fakenews    = 10;
     input->recovery_rate        = 0.01;
 
     input->contacts_per_day = (int*)malloc(sizeof(int) * 365);
     input->transmission_probability = (double*)malloc(sizeof(double) * 365);
     for (int day = 0; day < 365; ++day) {
-    input->contacts_per_day[day] = 2;             // arbitrary assumption of six possible transmission contacts per person per day, all year
+    input->contacts_per_day[day] = contacts;             // arbitrary assumption of six possible transmission contacts per person per day, all year
     input->transmission_probability[day] = 0.1;   // 10 percent chance of convincing a contact of fake news
     }
 }
@@ -101,7 +102,7 @@ __device__ unsigned cuda_taus(unsigned &state) {
 }
 __device__ unsigned cuda_LCG(unsigned &state) {
     int a = 45, b = 3;
-    return state = (a * state + b); //%4294967295UL;
+    return state = (a * state + b);
 }
 
 __device__ double cuda_gen_rand_num(unsigned &z_taus, unsigned &z_LCG) {
@@ -138,7 +139,6 @@ __global__ void cuda_count_believers(double *cuda_fakenews_believe_strength, int
     if(0 == threadIdx.x) overall_believers[blockIdx.x] = shared_believers[0];
 
     //unfortunately no atomic add availavble (threw compilation error) -> do final summation on cpu
-
     // if (threadIdx.x == 0) atomicAdd(overall_believers, shared_believers[0]);
 }
 
@@ -176,22 +176,10 @@ void generate_random_seq(double *array, int size) {
 
 
 void run_simulation(const SimInput_t *input, SimOutput_t *output) {
-    //get max number of contacts a day to compute array for step 4
-    
-    double max_contacts_per_day{0};
-    for(int i = 0; i < 365; ++i){
-        double curr_contacts = input->contacts_per_day[i];
-        if (curr_contacts > max_contacts_per_day)
-            max_contacts_per_day = curr_contacts;
-    }
-    printf("max_contacts: %f\n", max_contacts_per_day);
-    int max_rand_val_per_thread = (input->population_size + num_blocks * num_threads_per_block -1)/(num_blocks * num_threads_per_block) * 2 * max_contacts_per_day;
-    printf("rand vals per block : %i\n", max_rand_val_per_thread);
 
-    //Allocate MEmory on the CPU
+    //Allocate Memory on the CPU
     int *fakenews_believers_per_day = new int[356];
     int *believers_per_thread = new int[num_blocks*num_threads_per_block];
-    double *tmp_rand_num_array = new double[max_rand_val_per_thread*num_blocks*num_threads_per_block];
     unsigned *state_init = new unsigned[num_blocks*num_threads_per_block];
 
 
@@ -238,7 +226,7 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
     cuda_init_Data<<<num_blocks, num_threads_per_block >>>(input->population_size, input->starting_fakenews, cuda_fakenews_believe_strength);
 
     int num_believers_max{0};
-    for (int day = 0; day < 200; ++day) {
+    for (int day = 0; day < 365; ++day) {
         
         // STEP 1: determin number of believers of the day
         int believers_today{0};
@@ -274,18 +262,11 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
             transmission_probability_today /= 5.;
             recovery_rate_today *= 5.;
         }
-
-        //STEP 4: Pass On Fake NEws within thhe population
-        // generate_random_seq(tmp_rand_num_array, num_blocks*num_threads_per_block*max_rand_val_per_thread);
-        // cudaMemcpy(cuda_rand_values_threads, tmp_rand_num_array, sizeof(double)*num_blocks*num_threads_per_block*max_rand_val_per_thread, cudaMemcpyHostToDevice);
-
-
         // use cuda kernel for computation of populatioin loop
         cuda_pass_on_fakenews<<<num_blocks, num_threads_per_block>>>(input->population_size, cuda_fakenews_believe_strength, recovery_rate_today, transmission_probability_today, contacts_today, cuda_states_taus, cuda_states_LCG);
     }
 
     delete[] believers_per_thread;
-    delete[] tmp_rand_num_array;
     cudaFree(cuda_contacts_per_day);
     cudaFree(cuda_fakenews_believe_strength);
     cudaFree(cuda_fakenews_believers_per_day);
@@ -298,9 +279,17 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
 
 
 int main(int argc, char **argv) {
+    size_t population = 8916845;
+    int contacts = 2; 
+    int pushback = 20000;
+
+    if (1 < argc) population = std::stoll(argv[1]);
+    if (2 < argc) contacts = std::stoi(argv[2]);
+    if (3 < argc) pushback = std::stoi(argv[3]);
     SimInput_t input;
     SimOutput_t output;
-    init_input(&input);
+    init_input(&input, population, contacts, pushback);
+    printf("population: %lu, contacts: %i, pusback: %i\n", input.population_size, input.contacts_per_day[3], input.pushback_threshold);
     init_output(&output, input.population_size);
     Timer timer;
     srand(0); // initialize random seed for deterministic output
