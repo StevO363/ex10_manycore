@@ -1,88 +1,64 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
+#include <iomanip>
 #include <math.h>
 #include <climits>
 #include "timer.hpp"
 
-#define MOD 4294967296 // 2^32
 
 const int num_blocks = 256;
 const int num_threads_per_block = 256;
 
-// __device__ unsigned long cuda_LCG1(unsigned long &state) {
-//     const unsigned long a = 163936, c = 34048436;
-//     state = (a * state + c) % MOD;
-//     return state;
-// }
-
-// __device__ unsigned long cuda_LCG2(unsigned long &state) {
-//     const unsigned long a = 127436, c = 33292876;
-//     state = (a * state + c) % MOD;
-//     return state;
-// }
-// __device__ unsigned long cuda_LCG3(unsigned long &state) {
-//     const unsigned long a = 1633936, c = 92387456;
-//     state = (a * state + c) % MOD;
-//     return state;
-// }
-// __global__ void cuda_mult_LCG(double *rand_num, int size) {
-//     int tid_global = threadIdx.x + blockIdx.x * blockDim.x;
-//     unsigned long state1 = tid_global, state2 = tid_global+10, state3 = tid_global+2;
-//     double res_double{0};
-//     for (int i = 0; i < 10; ++i) {
-//         unsigned long r1 = cuda_LCG1(state1);
-//         unsigned long r2 = cuda_LCG2(state2);
-//         unsigned long r3 = cuda_LCG3(state3);
-
-//         unsigned long result = (r1 +r2 +r3) % MOD;
-//         state1 = result + 1;
-//         state2 = result + 20;
-//         state3 = result + 3;
-//         res_double = static_cast<double>(result)/MOD;
-//     }
-//     rand_num[tid_global] = res_double;    
-// }
-
-__device__ float generate_combined_random_number(unsigned int &lcg_state, unsigned int &taus_state) {
-    // LCG parameters (example values)
-    const unsigned int a = 1664525, c = 1013904223, m = 4294967296;
-
-    // Tausworthe parameters (example values)
-    const int S1 = 13, S2 = 19, S3 = 12;
-    const unsigned int M = 4294967294U;
-
-    // Generate random number using LCG
-    lcg_state = (a * lcg_state + c) % m;
-
-    // Generate random number using Tausworthe
-    unsigned b = (((taus_state << S1) ^ taus_state) >> S2);
-    taus_state = (((taus_state & M) << S3) ^ b);
-
-    // Combine and scale the result
-    unsigned int combined_random = lcg_state ^ taus_state;
-    return static_cast<double>(combined_random) / static_cast<double>(UINT_MAX);
+__device__ unsigned cuda_taus(unsigned &state) {
+    int a = 3, b = 12, c = 19;
+    unsigned d = 4294967295UL;
+    unsigned tmp = (((state << a) ^ state) >> b);
+    return state = (((state & d) << c) ^ tmp);
+}
+__device__ unsigned cuda_LCG(unsigned &state) {
+    int a = 45, b = 3;
+    return state = (a * state + b); //%4294967295UL;
 }
 
-__global__ void generate_random_numbers(float *random_numbers, unsigned int seed) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+__device__ double cuda_gen_rand_num(unsigned &z_taus, unsigned &z_LCG) {
+    double scaling = 1./UINT_MAX;
+    return scaling * (cuda_taus(z_taus) ^ cuda_LCG(z_LCG));
+}
 
-    // Initialize states for LCG and Taus
-    unsigned int lcg_state = seed + idx;
-    unsigned int taus_state = seed ^ idx;
-
-    // Call device function to get a single random number
-    random_numbers[idx] = generate_combined_random_number(lcg_state, taus_state);
+__global__ void cuda_gen_test_seq(double *test_arr, int size, unsigned *z_taus, unsigned *z_LCG) {
+    int tid_global = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int dude = blockIdx.x * blockDim.x + threadIdx.x; dude < size; dude += blockDim.x * gridDim.x){
+        test_arr[dude] = cuda_gen_rand_num(z_taus[tid_global], z_LCG[tid_global]);
+    }
 }
 
 int main () {
-    const int arraySize = 256 * 256;
-    float *rand_num_host = new float[arraySize];
-    float *cuda_rand_num;
-    cudaMalloc(&cuda_rand_num, sizeof(float) * arraySize);
+    const int arraySize = 10000000;
+    double *rand_num_host = new double[arraySize];
+    double *cuda_rand_num;
+    unsigned *state_init = new unsigned[arraySize];
+    cudaMalloc(&cuda_rand_num, sizeof(double) * arraySize);
+    srand(0);
 
-    generate_random_numbers<<<256, 256>>>(cuda_rand_num, 2873456);
-    cudaMemcpy(rand_num_host, cuda_rand_num, sizeof(float) * arraySize, cudaMemcpyDeviceToHost);
+    unsigned *cuda_states_taus, *cuda_states_LCG;
+    cudaMalloc(&cuda_states_taus, sizeof(unsigned)*arraySize);
+    cudaMalloc(&cuda_states_LCG, sizeof(unsigned)*arraySize);
+
+    //init states for rand generators;
+    for (int i = 0; i < arraySize; ++ i) {
+        state_init[i] = static_cast<unsigned int>(static_cast<double>(rand()) / RAND_MAX * UINT_MAX);
+    }
+
+    cudaMemcpy(cuda_states_taus, state_init, sizeof(unsigned)*arraySize, cudaMemcpyHostToDevice);
+
+    for (int i = 0; i < arraySize; ++ i) {
+        state_init[i] = static_cast<unsigned int>(static_cast<double>(rand()) / RAND_MAX * UINT_MAX);
+    }
+    cuda_gen_test_seq<<<256, 256>>>(cuda_rand_num, arraySize, cuda_states_taus, cuda_states_LCG);
+    cudaMemcpy(rand_num_host, cuda_rand_num, sizeof(double) * arraySize, cudaMemcpyDeviceToHost);
+
+
 
     // Initialize bins
     const int numBins = 10;
@@ -98,12 +74,24 @@ int main () {
     }
 
     // Print the count in each bin
+    printf("CHECKING STATISICAL QUALITY\n\n");
+    printf("checking number of values in the given intervals:\n");
     for (int i = 0; i < numBins; ++i) {
-        std::cout << "Bin " << i << " (Range " << (i * 0.1) << " to " << ((i + 1) * 0.1) << "): " << bins[i] << std::endl;
+
+        std::cout << "Bin " << i << " (Range " << (i * 0.1) << " to " << ((i + 1) * 0.1) << "): " << bins[i] <<  " " << std::fixed << std::setprecision(2) << bins[i]*100./arraySize << "%" << std::endl;
     }
+
+    double mean{0};
+    for (int i = 0; i < arraySize; ++i) {
+        mean += rand_num_host[i];
+    }
+    printf("\nMean: %f\n", mean/arraySize);
         
     delete[] rand_num_host;
+    delete[] state_init;
     cudaFree(cuda_rand_num);
+    cudaFree(cuda_states_LCG);
+    cudaFree(cuda_states_taus);
 
     return EXIT_SUCCESS;
 }
