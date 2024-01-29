@@ -1,0 +1,28 @@
+Number of runs: 5
+population: 5.000000e+04, contacts: 2, pusback: 20000
+avg Simulation time: 0.215752
+
+Number of runs: 5
+population: 1.000000e+05, contacts: 2, pusback: 20000
+avg Simulation time: 0.399489
+
+Number of runs: 5
+population: 5.000000e+05, contacts: 2, pusback: 20000
+avg Simulation time: 1.54007
+
+Number of runs: 1
+population: 1.000000e+06, contacts: 2, pusback: 20000
+Fake news pandemic ended on Day 95
+avg Simulation time: 3.0524
+
+Number of runs: 1
+population: 5.000000e+06, contacts: 2, pusback: 20000
+Fake news pandemic ended on Day 94
+avg Simulation time: 14.4427
+
+Number of runs: 1
+population: 1.000000e+07, contacts: 2, pusback: 20000
+Fake news pandemic ended on Day 95
+avg Simulation time: 28.931
+
+

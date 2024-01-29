@@ -1,0 +1,32 @@
+Number of runs: 10
+population: 5.000000e+04, contacts: 2, pusback: 20000
+avg Simulation time: 0.0123991
+
+Number of runs: 10
+population: 1.000000e+05, contacts: 2, pusback: 20000
+avg Simulation time: 0.0158201
+
+Number of runs: 10
+population: 5.000000e+05, contacts: 2, pusback: 20000
+Fake news pa
+avg Simulation time: 0.0195814
+
+Number of runs: 10
+population: 1.000000e+06, contacts: 2, pusback: 20000
+avg Simulation time: 0.0219847
+
+Number of runs: 10
+population: 5.000000e+06, contacts: 2, pusback: 20000
+avg Simulation time: 0.0532599
+
+Number of runs: 10
+population: 1.000000e+07, contacts: 2, pusback: 20000
+avg Simulation time: 0.0866901
+
+Number of runs: 10
+population: 5.000000e+07, contacts: 2, pusback: 20000
+avg Simulation time: 0.391952
+
+Number of runs: 10
+population: 1.000000e+08, contacts: 2, pusback: 20000
+avg Simulation time: 0.776232
