@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2023.11.30)  28 JAN 2024 20:28
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2023.11.30)  29 JAN 2024 15:09
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -429,11 +429,7 @@ Package: xstring 2021/07/21 v1.84 String manipulations (CT)
 File: l3backend-pdftex.def 2022-01-12 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count319
 \l__pdf_internal_box=\box73
-) (./mian.aux
-
-LaTeX Warning: Label `' multiply defined.
-
-)
+) (./mian.aux)
 \openout1 = `mian.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 110.
@@ -502,31 +498,56 @@ LaTeX Info: Redefining \nameref on input line 110.
 \@outlinefile=\write3
 \openout3 = `mian.out'.
 
- [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
+LaTeX Font Info:    Trying to load font information for U+msa on input line 125.
+ (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 125.
+ (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+) [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
 
 
 Non-PDF special ignored!
 <special> papersize=210mm,297mm
-] (./mian.aux)
+]
+<../Population.png, id=16, 462.528pt x 346.896pt>
+File: ../Population.png Graphic file (type png)
+<use ../Population.png>
+Package pdftex.def Info: ../Population.png  used on input line 152.
+(pdftex.def)             Requested size: 341.43306pt x 256.08499pt.
+ [2]
+<../Population_no_push.png, id=44, 462.528pt x 346.896pt>
+File: ../Population_no_push.png Graphic file (type png)
+<use ../Population_no_push.png>
+Package pdftex.def Info: ../Population_no_push.png  used on input line 159.
+(pdftex.def)             Requested size: 341.43306pt x 256.08499pt.
+ [3 <../Population.png>]
+<../contacts.png, id=53, 462.528pt x 346.896pt>
+File: ../contacts.png Graphic file (type png)
+<use ../contacts.png>
+Package pdftex.def Info: ../contacts.png  used on input line 167.
+(pdftex.def)             Requested size: 341.43306pt x 256.08499pt.
+ [4 <../Population_no_push.png>] [5 <../contacts.png>] (./mian.aux)
 
-LaTeX Warning: There were multiply-defined labels.
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
 Package rerunfilecheck Info: File `mian.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 15602 strings out of 480247
- 247536 string characters out of 5896150
- 728919 words of memory out of 5000000
- 33317 multiletter control sequences out of 15000+600000
- 471376 words of font info for 35 fonts, out of 8000000 for 9000
+ 15705 strings out of 480247
+ 249221 string characters out of 5896150
+ 680919 words of memory out of 5000000
+ 33386 multiletter control sequences out of 15000+600000
+ 476364 words of font info for 54 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 60i,11n,63p,548b,1167s stack positions out of 5000i,500n,10000p,200000b,80000s
-</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb>
-Output written on mian.pdf (1 page, 58768 bytes).
+ 60i,11n,63p,1176b,1111s stack positions out of 5000i,500n,10000p,200000b,80000s
+ </home/stefan/.texlive2021/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1200.600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb>
+Output written on mian.pdf (5 pages, 710146 bytes).
 PDF statistics:
- 59 PDF objects out of 1000 (max. 8388607)
- 47 compressed objects within 1 object stream
- 24 named destinations out of 1000 (max. 500000)
- 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 104 PDF objects out of 1000 (max. 8388607)
+ 77 compressed objects within 1 object stream
+ 33 named destinations out of 1000 (max. 500000)
+ 16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

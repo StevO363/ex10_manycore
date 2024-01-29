@@ -66,16 +66,15 @@ int main () {
 
     // Count numbers in each bin
     for (int i = 0; i < arraySize; ++i) {
-        if (rand_num_host[i] >= 0 && rand_num_host[i] < 1) { // Ensure the number is within [0, 1)
+        if (rand_num_host[i] >= 0 && rand_num_host[i] < 1) { 
             int binIndex = static_cast<int>(rand_num_host[i] * numBins);
-            if (binIndex == numBins) binIndex = numBins - 1; // Edge case for 1.0
+            if (binIndex == numBins) binIndex = numBins - 1;
             bins[binIndex]++;
         }
     }
 
-    // Print the count in each bin
     printf("CHECKING STATISICAL QUALITY\n\n");
-    printf("Numbers generated: %lu, in the interval betweene 0 and 1\n");
+    printf("Numbers generated: %lu, in the interval betweene 0 and 1\n", arraySize);
     printf("checking number of values in the given intervals:\n\n");
     for (int i = 0; i < numBins; ++i) {
 

@@ -41,8 +41,8 @@ plt.clf()
 
 runtimes = [0.019713, 0.0258568, 0.0614977, 0.108414, 0.471281, 0.917944]
 
-plt.loglog(population[:6], runtimes, label=" Rand GPU_no Pushb")
-plt.loglog(population[:6], fake_randGPU[:6], label="Rand GPU")
+plt.loglog(population[:6], runtimes, label=" Rand GPU no Pushb")
+plt.loglog(population[:6], fake_randGPU[:6], label="Rand GPU with Pushb")
 plt.grid(True)
 plt.legend()
 plt.title("Avg Execution Time for Different Population Sizes (no pushback)")

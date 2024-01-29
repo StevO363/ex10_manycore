@@ -194,11 +194,7 @@ int count_believers(int *believers_per_block, int size) {
   return tmp_sum;
 }
 
-void generate_random_seq(double *array, int size) {
-  for (int i = 0; i < size; ++i) {
-    array[i] = ((double)rand()) / (double)RAND_MAX;
-  }
-}
+
 
 void run_simulation(const SimInput_t *input, SimOutput_t *output, int days) {
 
@@ -279,18 +275,18 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output, int days) {
 
     // Step 2:
     int is_pushback{0};
-    // if (believers_today > num_believers_max) {
-    //   num_believers_max = believers_today;
-    // }
-    // if (num_believers_max > input->pushback_threshold) {
-    //   is_pushback = 1;
-    // }
+    if (believers_today > num_believers_max) {
+      num_believers_max = believers_today;
+    }
+    if (num_believers_max > input->pushback_threshold) {
+      is_pushback = 1;
+    }
 
-    // some diagnostic output
-    // char pushback[] = " [PUSHBACK]";
-    // char normal[] = "";
-    // printf("Day %d%s: %d active fake news believers\n", day, is_pushback ?
-    // pushback : normal, believers_today);
+    some diagnostic output
+    char pushback[] = " [PUSHBACK]";
+    char normal[] = "";
+    printf("Day %d%s: %d active fake news believers\n", day, is_pushback ?
+    pushback : normal, believers_today);
 
     if (believers_today == 0) {
       printf("Fake news pandemic ended on Day %d\n", day);
