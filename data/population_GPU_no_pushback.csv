@@ -1,0 +1,90 @@
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 50000 2>&1
+
+Number of runs: 10
+population: 5.000000e+04, contacts: 2, pusback: 20000, days: 365
+avg Simulation time: 0.019713
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 100000 2>&1
+
+Number of runs: 10
+population: 1.000000e+05, contacts: 2, pusback: 20000, days: 365
+avg Simulation time: 0.0258568
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 500000 2>&1
+
+Number of runs: 10
+population: 5.000000e+05, contacts: 2, pusback: 20000, days: 365
+avg Simulation time: 0.0614977
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 1000000 2>&1
+
+Number of runs: 10
+population: 1.000000e+06, contacts: 2, pusback: 20000, days: 365
+avg Simulation time: 0.108414
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 5000000 2>&1
+
+Number of runs: 10
+population: 5.000000e+06, contacts: 2, pusback: 20000, days: 365
+avg Simulation time: 0.471281
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 10000000 2>&1
+
+Number of runs: 10
+population: 1.000000e+07, contacts: 2, pusback: 20000, days: 365
+avg Simulation time: 0.917944
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 50000000 2>&1
+
+
+
+POSTing request to https://rtx3060.360252.org/2023/ex10/run.php
+
+Compile output
+fbd02227.cu(264): warning: variable "num_believers_max" was declared but never referenced$> nvcc fbd02227.cu  -I. -arch=sm_60 -o fbd02227.out -lcublas -lOpenCL 2>&1
+[Compilation successful]Run output
+$> timeout 30s ./fbd02227.out 10 365 100000000 2>&1
+
+
+

@@ -200,10 +200,10 @@ void generate_random_seq(double *array, int size) {
   }
 }
 
-void run_simulation(const SimInput_t *input, SimOutput_t *output) {
+void run_simulation(const SimInput_t *input, SimOutput_t *output, int days) {
 
   // Allocate Memory on the CPU
-  int *fakenews_believers_per_day = new int[356];
+  int *fakenews_believers_per_day = new int[days];
   int *believers_per_thread = new int[num_blocks * num_threads_per_block];
   unsigned *state_init = new unsigned[num_blocks * num_threads_per_block];
 
@@ -213,16 +213,16 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
              sizeof(double) * input->population_size);
 
   double *cuda_contacts_per_day;
-  cudaMalloc(&cuda_contacts_per_day, sizeof(double) * 365);
+  cudaMalloc(&cuda_contacts_per_day, sizeof(double) * days);
 
   double *cuda_transmission_probability;
-  cudaMalloc(&cuda_transmission_probability, sizeof(double) * 365);
+  cudaMalloc(&cuda_transmission_probability, sizeof(double) * days);
 
   double *cuda_recovery_rate;
-  cudaMalloc(&cuda_recovery_rate, sizeof(double) * 365);
+  cudaMalloc(&cuda_recovery_rate, sizeof(double) * days);
 
   int *cuda_fakenews_believers_per_day;
-  cudaMalloc(&cuda_fakenews_believers_per_day, sizeof(int) * 365);
+  cudaMalloc(&cuda_fakenews_believers_per_day, sizeof(int) * days);
 
   int *cuda_fakenews_believers_per_block;
   cudaMalloc(&cuda_fakenews_believers_per_block, sizeof(int) * num_blocks);
@@ -262,7 +262,7 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
       cuda_fakenews_believe_strength);
 
   int num_believers_max{0};
-  for (int day = 0; day < 365; ++day) {
+  for (int day = 0; day < days; ++day) {
 
     // STEP 1: determin number of believers of the day
     int believers_today{0};
@@ -279,12 +279,12 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output) {
 
     // Step 2:
     int is_pushback{0};
-    if (believers_today > num_believers_max) {
-      num_believers_max = believers_today;
-    }
-    if (num_believers_max > input->pushback_threshold) {
-      is_pushback = 1;
-    }
+    // if (believers_today > num_believers_max) {
+    //   num_believers_max = believers_today;
+    // }
+    // if (num_believers_max > input->pushback_threshold) {
+    //   is_pushback = 1;
+    // }
 
     // some diagnostic output
     // char pushback[] = " [PUSHBACK]";
@@ -329,26 +329,29 @@ int main(int argc, char **argv) {
   int contacts = 2;
   int pushback = 20000;
   int runs = 10;
+  int days{365};
 
   if (1 < argc)
     runs = std::stoi(argv[1]);
   if (2 < argc)
-    population = std::stoll(argv[2]);
+    days = std::stoi(argv[2]);
   if (3 < argc)
-    contacts = std::stoi(argv[3]);
+    population = std::stoll(argv[3]);
   if (4 < argc)
-    pushback = std::stoi(argv[4]);
+    contacts = std::stoi(argv[4]);
+  if (5 < argc)
+    pushback = std::stoi(argv[5]);
   Timer timer;
   double time{0};
-  printf("Number of runs: %i\npopulation: %e, contacts: %i, pusback: %i\n",
-         runs, static_cast<double>(population), contacts, pushback);
+  printf("Number of runs: %i\npopulation: %e, contacts: %i, pusback: %i, days: %i\n",
+         runs, static_cast<double>(population), contacts, pushback, days);
   for (int run = 0; run < runs; ++run) {
     SimInput_t input;
     SimOutput_t output;
     init_input(&input, population, contacts, pushback);
     init_output(&output, input.population_size);
     timer.reset();
-    run_simulation(&input, &output);
+    run_simulation(&input, &output, days);
     time += timer.get();
     deinit_input(&input);
     deinit_output(&output);
