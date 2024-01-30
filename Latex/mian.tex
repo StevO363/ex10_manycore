@@ -153,7 +153,7 @@ To assess the performance of the Implementations first the different execution t
     \caption{Execution times with pushback for different ppopulation sizes.}
     \label{fig:population}
 \end{figure}
-What i simportant to note here is, that due to the pushback the variation of the days that are simulated, does not really make a difference due to the fact that the pushback threshold will be reached always at a similar point (provided, that all the other parameters stay the same) which then kills the 'epidemic' at similar points in time. To visualize this the following figure shows the execution times for different population sizes for the program that computes the random numbers on the GPU. The only difference being that pushsback is once disabled and once enabled.
+What is important to note here is, that due to the pushback the variation of the days that are simulated, does not really make a difference due to the fact that the pushback threshold will be reached always at a similar point (provided, that all the other parameters stay the same) which then kills the 'epidemic' at similar points in time. To visualize this the following figure shows the execution times for different population sizes for the program that computes the random numbers on the GPU. The only difference being that pushsback is once disabled and once enabled.
 \begin{figure}[H]
     \centering
     \includegraphics[width=12cm]{../Population_no_push.png}
@@ -161,11 +161,22 @@ What i simportant to note here is, that due to the pushback the variation of the
     \label{fig:population_no_push}
 \end{figure}
 
-Another aspect that influences performance is the number of contacts each person has on each day. In the following plot the random number generator on the gPU is used to show the impact of the number of contacts of each person each day. To have a better understanding of the scaling the days were varied but pushback was disabled to get the full picture of the simulated days. 
+Another aspect that influences performance is the number of contacts each person has on each day. In the following plot the random number generator on the GPU is used to show the impact of the number of contacts of each person each day. To have a better understanding of the scaling the days were varied but pushback was disabled to get the full picture of the simulated days. 
 \begin{figure}[H]
   \centering
   \includegraphics[width=12cm]{../contacts.png}
   \caption{Execution times for different number of days for  different number of contacts.}
   \label{fig:contacts}
 \end{figure}
+To get  an idea of the overall parameters that have the most impact on the runtime of the simulation the following parameters seem to be the most important: 
+\begin{itemize}
+  \item \textbf{Population Size: } This has an immediat impact on the performance in every scenario, because each cuda kernel loops over the whole population.
+  \item \textbf{Contacts per Day: } This parameetr is responsible for the size of the loop inside the population loop in the pass on  fakenews kernel. The impact grows as more people become believers.
+  \item \textbf{Days Simulated: } This is responsible for the length of the outer most loop in the simulation function, but is mostly not fully executed due to the pushback and its effect.
+\end{itemize}
+So a performance model for the worst case would be 
+\begin{align}
+  O(Population \cdot contacts \cdot days)
+\end{align}
+This would be most accurate when there is no pushback and most of the people are already fakenews believers. In a normal execution with the pushback parameters this limit will probably never be reached. But it gives a good idea of the worst case and the impacts the variables have on the performance of the simulation. The most influence definitely has the population size in a normal execution.
 \end{document}
