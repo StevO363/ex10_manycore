@@ -112,7 +112,7 @@ margin=1cm,
   \section*{Exercise 10}
 \end{center}
 \subsection*{Random Number List (CPU)}
-In this task we should compute the random numbers on the CPU and copy an array to the GPU which then the threads can draw the needed random  numbers from. This was achieved, by computing the maximum number of contacts inside the \lstinline|contacts_per_day| array. With this information an array was created \lstinline|cuda_rand_values_threads| which then contains the maximum possible amount of random numbers that could be needed for one day. Each thread indexes the array via its thread ID multiplyed by the number of \lstinline|max_rand_values_per_thread|, and then adds according for which contact a random number is currently requested. Due to memoryy efficiency it is not practical to copmpute one large array containing all the random numbers for all days of the simulation. The reason behind this, is that most of these numbers are never needed due to the pushback that is implemented.
+In this task we should compute the random numbers on the CPU and copy an array to the GPU which then the threads can draw the needed random  numbers from. This was achieved, by computing the maximum number of contacts inside the \lstinline|contacts_per_day| array. With this information an array was created \lstinline|cuda_rand_values_threads| which then contains the maximum possible amount of random numbers that could be needed for one day. Each thread indexes the array via its thread ID multiplyed by the number of \lstinline|max_rand_values_per_thread|, and then adds according for which contact a random number is currently requested. Due to memory efficiency it is not practical to copmpute one large array containing all the random numbers for all days of the simulation. The reason behind this, is that most of these numbers are never needed due to the pushback that is implemented.
 \subsection*{Random Number Generation on GPU}
 In this task we should create our own random number generator on the GPU which is then used to compute the needed random numbers. To achieve this three additional cuda funciton were created:
 \begin{itemize}
@@ -120,7 +120,7 @@ In this task we should create our own random number generator on the GPU which i
   \item \textbf{cuda\_LCG: } This function performs a linear congruential generator step on the state reference and updates this state.
   \item \textbf{cuda\_gen\_rand\_num: } This function combines one Tausworthe step with one LCG step to generate better random numbers. Then the result is scaled and returned.
 \end{itemize}\
-The states used are arrays where each thread has its own state for the Tausworthe and LCG steps. These arrays are initialized with random numbers on the CPU und then updated in ech step of the random number generation process. In my implementation one Tausworthe and one LCG steps are combined, but with the given functions this could easily be expanded to use multiple steps. For this simulation after verifying the desired properties of the random numbers generated it suffices to only use these two steps and cut down on computation cost. 
+The states used are arrays where each thread has its own state for the Tausworthe and LCG steps. These arrays are initialized with random numbers on the CPU und then updated in ech step of the random number generation process. In my implementation one Tausworthe and one LCG steps are combined, but with the given functions this could easily be expanded to use multiple steps. For this simulation after verifying the desired properties of the random numbers generated, it suffices to only use these two steps and cut down on computation cost. 
 \subsubsection*{Quality of the Random Numbers}
 To verify the quality of the generated random numbers an extra program was created, using the same method to compute random numbers on the GPU and afterwards analyzed. The mean was checked and the distribution of the numbers in $0.1$ intervals between zero and one, with the following results.
 \begin{lstlisting}
@@ -144,20 +144,20 @@ Mean: 0.500015
 \end{lstlisting}
 
 \subsection*{Port from CPU to GPU}
-To port the simualtion from the CPU to the GPU most of the parts in the simulation function were realized with cuda kernels. The specific implementation differs slightly depending on if the random numbers are generated on the CPU or GPU. The general approach is, that first all the necessary arrays are allcoated on the CPU and GPU. After that a cuda kernel is used to generate the initial data array. Then the main loop over the simulation days starts. In this loop a kernel is used to compute the daily number of fake news believers, which then reports the result back to the CPU. The checking if pushback is true, as well as computing th ecorresponding transmissiona and recovery probabilities on the CPU (for these calculation it makes no sense to do this on the GPU because it is only once computed for the day). After that the generated values are used in the final cuda kernel where the fakenews are passed on according to the reference  implementation. Duriung the loop over the days all the data remains on the GPU only the believer count of the current day is reported back to the CPU.
+To port the simualtion from the CPU to the GPU most of the parts in the simulation function were realized with cuda kernels. The specific implementation differs slightly depending on if the random numbers are generated on the CPU or GPU. The general approach is, that first all the necessary arrays are allcoated on the CPU and GPU. After that a cuda kernel is used to generate the initial data array. Then the main loop over the simulation days starts. In this loop a kernel is used to compute the daily number of fake news believers, which then reports the result back to the CPU. The checking if pushback is true, as well as computing the corresponding transmission and recovery probabilities is done on the CPU (for these calculation it makes no sense to do this on the GPU because it is only once computed for the day). After that the generated values are used in the final cuda kernel where the fakenews are passed on according to the reference  implementation. Duriung the loop over the days all the data remains on the GPU only the believer count of the current day is reported back to the CPU.
 \subsection*{Performance Model}
 To assess the performance of the Implementations first the different execution times for the GPU implementation of the usage of the random number list from the CPU compared to the direct computation on the GPU. In \autoref*{fig:population} it can be seen, that the computation directly on the GPU has huge advantage in terms of performance compared to the usage of a precomputed list.
 \begin{figure}[H]
     \centering
     \includegraphics[width=12cm]{../Population.png}
-    \caption{Execution times with pushback for different ppopulation sizes.}
+    \caption{Execution times with pushback for different population sizes.}
     \label{fig:population}
 \end{figure}
 What is important to note here is, that due to the pushback the variation of the days that are simulated, does not really make a difference due to the fact that the pushback threshold will be reached always at a similar point (provided, that all the other parameters stay the same) which then kills the 'epidemic' at similar points in time. To visualize this the following figure shows the execution times for different population sizes for the program that computes the random numbers on the GPU. The only difference being that pushsback is once disabled and once enabled.
 \begin{figure}[H]
     \centering
     \includegraphics[width=12cm]{../Population_no_push.png}
-    \caption{Execution times with pushback for different ppopulation sizes(with and withou pushback).}
+    \caption{Execution times with pushback for different population sizes(with and withou pushback).}
     \label{fig:population_no_push}
 \end{figure}
 
@@ -165,13 +165,13 @@ Another aspect that influences performance is the number of contacts each person
 \begin{figure}[H]
   \centering
   \includegraphics[width=12cm]{../contacts.png}
-  \caption{Execution times for different number of days for  different number of contacts.}
+  \caption{Execution times for different number of days for  different number of contacts (no pushback).}
   \label{fig:contacts}
 \end{figure}
 To get  an idea of the overall parameters that have the most impact on the runtime of the simulation the following parameters seem to be the most important: 
 \begin{itemize}
   \item \textbf{Population Size: } This has an immediat impact on the performance in every scenario, because each cuda kernel loops over the whole population.
-  \item \textbf{Contacts per Day: } This parameetr is responsible for the size of the loop inside the population loop in the pass on  fakenews kernel. The impact grows as more people become believers.
+  \item \textbf{Contacts per Day: } This parameter is responsible for the size of the loop inside the population loop in the pass on  fakenews kernel. The impact grows as more people become believers.
   \item \textbf{Days Simulated: } This is responsible for the length of the outer most loop in the simulation function, but is mostly not fully executed due to the pushback and its effect.
 \end{itemize}
 So a performance model for the worst case would be 
