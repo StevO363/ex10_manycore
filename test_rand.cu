@@ -45,7 +45,6 @@ int main () {
     cudaMalloc(&cuda_states_taus, sizeof(unsigned)*arraySize);
     cudaMalloc(&cuda_states_LCG, sizeof(unsigned)*arraySize);
 
-    //init states for rand generators;
     for (int i = 0; i < arraySize; ++ i) {
         state_init[i] = static_cast<unsigned int>(static_cast<double>(rand()) / RAND_MAX * UINT_MAX);
     }
@@ -60,11 +59,9 @@ int main () {
 
 
 
-    // Initialize bins
     const int numBins = 10;
     int bins[numBins] = {0};
 
-    // Count numbers in each bin
     for (int i = 0; i < arraySize; ++i) {
         if (rand_num_host[i] >= 0 && rand_num_host[i] < 1) { 
             int binIndex = static_cast<int>(rand_num_host[i] * numBins);

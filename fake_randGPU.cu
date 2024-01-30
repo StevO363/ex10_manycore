@@ -282,7 +282,7 @@ void run_simulation(const SimInput_t *input, SimOutput_t *output, int days) {
       is_pushback = 1;
     }
 
-    some diagnostic output
+    // some diagnostic output
     char pushback[] = " [PUSHBACK]";
     char normal[] = "";
     printf("Day %d%s: %d active fake news believers\n", day, is_pushback ?
